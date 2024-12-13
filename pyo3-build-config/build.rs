@@ -33,7 +33,7 @@ fn configure(interpreter_config: Option<InterpreterConfig>, name: &str) -> Resul
 fn config_file() -> Result<Option<InterpreterConfig>> {
     if let Some(path) = env_var("PYO3_CONFIG_FILE") {
         let path = Path::new(&path);
-        println!("cargo:rerun-if-changed={}", path.display());
+        //println!("cargo:rerun-if-changed={}", path.display());
         // Absolute path is necessary because this build script is run with a cwd different to the
         // original `cargo build` instruction.
         ensure!(
