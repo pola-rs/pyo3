@@ -58,7 +58,7 @@ pub fn cargo_env_var(var: &str) -> Option<String> {
 /// the variable changes.
 pub fn env_var(var: &str) -> Option<OsString> {
     if cfg!(feature = "resolve-config") {
-        println!("cargo:rerun-if-env-changed={}", var);
+        //println!("cargo:rerun-if-env-changed={}", var);
     }
     #[cfg(test)]
     {
@@ -434,7 +434,7 @@ print("gil_disabled", get_config_var("Py_GIL_DISABLED"))
     pub(super) fn from_pyo3_config_file_env() -> Option<Result<Self>> {
         env_var("PYO3_CONFIG_FILE").map(|path| {
             let path = Path::new(&path);
-            println!("cargo:rerun-if-changed={}", path.display());
+            //println!("cargo:rerun-if-changed={}", path.display());
             // Absolute path is necessary because this build script is run with a cwd different to the
             // original `cargo build` instruction.
             ensure!(
@@ -1815,14 +1815,14 @@ fn get_env_interpreter() -> Option<PathBuf> {
 pub fn find_interpreter() -> Result<PathBuf> {
     // Trigger rebuilds when `PYO3_ENVIRONMENT_SIGNATURE` env var value changes
     // See https://github.com/PyO3/pyo3/issues/2724
-    println!("cargo:rerun-if-env-changed=PYO3_ENVIRONMENT_SIGNATURE");
+    //println!("cargo:rerun-if-env-changed=PYO3_ENVIRONMENT_SIGNATURE");
 
     if let Some(exe) = env_var("PYO3_PYTHON") {
         Ok(exe.into())
     } else if let Some(env_interpreter) = get_env_interpreter() {
         Ok(env_interpreter)
     } else {
-        println!("cargo:rerun-if-env-changed=PATH");
+        //println!("cargo:rerun-if-env-changed=PATH");
         ["python", "python3"]
             .iter()
             .find(|bin| {
