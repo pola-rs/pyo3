@@ -10,6 +10,7 @@ use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
     str::{self, FromStr},
+    sync::LazyLock,
 };
 
 pub use target_lexicon::Triple;
@@ -52,6 +53,12 @@ pub(crate) const STABLE_ABI_MAX_MINOR: u8 = 15;
 thread_local! {
     static READ_ENV_VARS: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
 }
+fn recompile() -> bool {
+    static RECOMP: LazyLock<bool> =
+        LazyLock::new(|| std::env::var("PYO3_NO_RECOMPILE").as_deref() != Ok("1"));
+
+    *RECOMP
+}
 
 /// Gets an environment variable owned by cargo.
 ///
@@ -63,7 +70,9 @@ pub fn cargo_env_var(var: &str) -> Option<String> {
 /// Gets an external environment variable, and registers the build script to rerun if
 /// the variable changes.
 pub fn env_var(var: &str) -> Option<OsString> {
-    println!("cargo:rerun-if-env-changed={var}");
+    if recompile() {
+        println!("cargo:rerun-if-env-changed={var}");
+    }
     #[cfg(test)]
     {
         READ_ENV_VARS.with(|env_vars| {
@@ -635,7 +644,9 @@ print("gil_disabled", get_config_var("Py_GIL_DISABLED"))
     pub(super) fn from_pyo3_config_file_env(target: &Triple) -> Option<Result<Self>> {
         env_var("PYO3_CONFIG_FILE").map(|path| {
             let path = Path::new(&path);
-            println!("cargo:rerun-if-changed={}", path.display());
+            if recompile() {
+                println!("cargo:rerun-if-changed={}", path.display());
+            }
             // Absolute path is necessary because this build script is run with a cwd different to the
             // original `cargo build` instruction.
             ensure!(
@@ -2496,14 +2507,18 @@ fn get_env_interpreter() -> Option<PathBuf> {
 pub fn find_interpreter() -> Result<PathBuf> {
     // Trigger rebuilds when `PYO3_ENVIRONMENT_SIGNATURE` env var value changes
     // See https://github.com/PyO3/pyo3/issues/2724
-    println!("cargo:rerun-if-env-changed=PYO3_ENVIRONMENT_SIGNATURE");
+    if recompile() {
+        println!("cargo:rerun-if-env-changed=PYO3_ENVIRONMENT_SIGNATURE");
+    }
 
     if let Some(exe) = env_var("PYO3_PYTHON") {
         Ok(exe.into())
     } else if let Some(env_interpreter) = get_env_interpreter() {
         Ok(env_interpreter)
     } else {
-        println!("cargo:rerun-if-env-changed=PATH");
+        if recompile() {
+            println!("cargo:rerun-if-env-changed=PATH");
+        }
         ["python", "python3"]
             .iter()
             .find(|bin| {
